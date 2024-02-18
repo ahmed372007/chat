@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket.io Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+
+    #messages {
+      max-height: 300px;
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #fff;
+    }
+
+    .message {
+      padding: 8px;
+      margin: 8px 0;
+      border-radius: 8px;
+    }
+
+    .sent {
+      color: white;
+      background-color: green;
+      text-align: right;
+    }
+
+    .received {
+      color: black;
+      background-color: #ddd;
+      text-align: left;
+    }
+
+    input[type="text"] {
+      width: 70%;
+      padding: 8px;
+      margin-right: 5px;
+    }
+
+    button {
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+  <label for="roomInput">Enter Room ID:</label>
+  <input type="text" id="roomInput" placeholder="Enter Room ID">
+  <button onclick="connectToRoom()">Connect</button>
+
+  <div id="messages"></div>
+  <input type="text" id="messageInput" placeholder="Type your message">
+  <button onclick="sendMessage()">Send</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+  <script>
+    let socket;
+    let currentRoom;
+
+    if(localStorage.getItem("token") == null){
+        localStorage.setItem("token", Math.random())
+    }
+
+    const token = localStorage.getItem("token")
+
+    function connectToRoom() {
+      const roomInput = document.getElementById("roomInput");
+      const room = roomInput.value.trim();
+
+      if (room !== "") {
+        if (socket) {
+          socket.disconnect();
+        }
+
+        socket = io("http://localhost:3000"); // Replace with your server address
+        currentRoom = room;
+
+        socket.emit("join_room", room);
+
+        socket.on("joined", (message) => {
+          // Fetch old messages when the user joins the room
+          socket.emit("fetch_messages", room);
+        });
+
+        socket.on("display_messages", (messages) => {
+          const messagesDiv = document.getElementById("messages");
+          messagesDiv.innerHTML = messages.map((msg) => {
+            const messageClass = msg.sender == token ? 'sent' : 'received';
+            return `<p class="message ${messageClass}">${msg.message}</p>`;
+          }).join("");
+          scrollToBottom(messagesDiv);
+        });
+
+        socket.on("reseve_message", (data) => {
+          const messagesDiv = document.getElementById("messages");
+          const messageClass = data.sender == token ? 'sent' : 'received';
+          messagesDiv.innerHTML += `<p class="message ${messageClass}">${data.message}</p>`;
+          scrollToBottom(messagesDiv);
+        });
+      }
+    }
+
+    function sendMessage() {
+      const messageInput = document.getElementById("messageInput");
+      const message = messageInput.value;
+
+      if (message.trim() !== "") {
+        const data = {
+          id: currentRoom,
+          message: message,
+          sender: token,
+        };
+
+        socket.emit("send_message", data);
+        socket.emit("fetch_messages", currentRoom);
+        messageInput.value = "";
+      }
+    }
+
+    function scrollToBottom(element) {
+      element.scrollTop = element.scrollHeight;
+    }
+  </script>
+</body>
+</html>
