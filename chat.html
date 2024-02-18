@@ -78,7 +78,7 @@
           socket.disconnect();
         }
 
-        socket = io("http://localhost:3000"); // Replace with your server address
+        socket = io("https://chat-7bet.onrender.com"); // Replace with your server address
         currentRoom = room;
 
         socket.emit("join_room", room);
